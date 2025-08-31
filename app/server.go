@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -21,14 +22,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		buffer := make([]byte, 1024)
-		_, err = conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error reading from connection: ", err.Error())
-			os.Exit(1)
-		}
-		for range strings.Split(string(buffer), "\n") {
-			conn.Write([]byte("+PONG\r\n"))
+		scanner := bufio.NewScanner(conn)
+		for scanner.Scan() {
+			text := scanner.Text()
+			if strings.TrimSpace(text) == "PING" {
+				conn.Write([]byte("+PONG\r\n"))
+			}
 		}
 	}
 }
