@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -21,13 +22,16 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
+		go handleConn(context.Background(), conn)
+	}
+}
 
-		scanner := bufio.NewScanner(conn)
-		for scanner.Scan() {
-			text := scanner.Text()
-			if strings.TrimSpace(text) == "PING" {
-				conn.Write([]byte("+PONG\r\n"))
-			}
+func handleConn(ctx context.Context, c net.Conn) {
+	scanner := bufio.NewScanner(c)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if strings.TrimSpace(text) == "PING" {
+			c.Write([]byte("+PONG\r\n"))
 		}
 	}
 }
