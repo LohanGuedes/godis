@@ -12,7 +12,7 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/internal/token"
 )
 
-var Kv kvstore.Store
+var Kv = kvstore.NewStore()
 
 // Start begins listening for and handling TCP connections on port 6379.
 func Start() {
@@ -137,6 +137,7 @@ func handleSet(conn net.Conn, args []token.Item) {
 	// Set in the KV databsase
 	// Maybe this should be an try?
 	Kv.Set(args[1].Literal(), args[2].Literal())
+	conn.Write([]byte("+OK\r\n"))
 }
 
 func handleGet(conn net.Conn, args []token.Item) {

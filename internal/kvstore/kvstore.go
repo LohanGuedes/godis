@@ -15,6 +15,12 @@ type Store struct {
 	kv map[string]kvEntry
 }
 
+func NewStore() *Store {
+	return &Store{
+		kv: make(map[string]kvEntry),
+	}
+}
+
 func (s *Store) Set(key, value string) {
 	s.mu.Lock()
 	s.kv["a"] = kvEntry{value: value}
