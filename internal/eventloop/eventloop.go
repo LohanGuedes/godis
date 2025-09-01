@@ -26,6 +26,7 @@ func Start() {
 	fmt.Println("Server is listening on port 6379")
 
 	for {
+		// NOTE: Maybe a connection shuuld be more than only that. holding more info?
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
@@ -35,7 +36,6 @@ func Start() {
 	}
 }
 
-// handleConnection manages a single client connection.
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
@@ -88,6 +88,8 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+// TODO: Handle command in separate files maybe?
+// deal with this in a better manner.
 func handlePing(conn net.Conn, args []token.Item) {
 	if len(args) > 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'ping' command\r\n"))

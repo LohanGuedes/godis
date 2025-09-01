@@ -10,6 +10,7 @@ type kvEntry struct {
 	expiry time.Time
 }
 
+// TODO: Make this better by using a sync.Map maybe
 type Store struct {
 	mu sync.Mutex
 	kv map[string]kvEntry
