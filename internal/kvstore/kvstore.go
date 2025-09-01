@@ -23,7 +23,7 @@ func NewStore() *Store {
 
 func (s *Store) Set(key, value string) {
 	s.mu.Lock()
-	s.kv["a"] = kvEntry{value: value}
+	s.kv[key] = kvEntry{value: value}
 	s.mu.Unlock()
 }
 
