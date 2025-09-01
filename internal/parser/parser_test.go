@@ -20,6 +20,18 @@ func TestParse(t *testing.T) {
 		expectErr bool
 	}{
 		{
+			name:      "Simple SET Command",
+			input:     "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n",
+			expectErr: false,
+			expected: &token.Array{
+				Items: []token.Item{
+					&token.BulkString{Value: stringPtr("SET")},
+					&token.BulkString{Value: stringPtr("foo")},
+					&token.BulkString{Value: stringPtr("bar")},
+				},
+			},
+		},
+		{
 			name:     "Simple String",
 			input:    "+OK\r\n",
 			expected: &token.SimpleString{Value: "OK"},

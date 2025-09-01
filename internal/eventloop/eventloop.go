@@ -7,9 +7,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/codecrafters-io/redis-starter-go/internal/kvstore"
 	"github.com/codecrafters-io/redis-starter-go/internal/parser"
 	"github.com/codecrafters-io/redis-starter-go/internal/token"
 )
+
+var Kv kvstore.Store
 
 // Start begins listening for and handling TCP connections on port 6379.
 func Start() {
@@ -74,6 +77,10 @@ func handleConnection(conn net.Conn) {
 			handlePing(conn, cmdArray.Items)
 		case "ECHO":
 			handleEcho(conn, cmdArray.Items)
+		case "SET":
+			handleSet(conn, cmdArray.Items)
+		case "GET":
+			handleGet(conn, cmdArray.Items)
 		default:
 			errMsg := fmt.Sprintf("-ERR unknown command `%s`\r\n", *commandNameItem.Value)
 			conn.Write([]byte(errMsg))
@@ -81,7 +88,6 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-// handlePing responds to a PING command.
 func handlePing(conn net.Conn, args []token.Item) {
 	if len(args) > 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'ping' command\r\n"))
@@ -101,10 +107,9 @@ func handlePing(conn net.Conn, args []token.Item) {
 	}
 }
 
-// handleEcho responds to an ECHO command.
 func handleEcho(conn net.Conn, args []token.Item) {
 	if len(args) != 2 {
-		conn.Write([]byte("-ERR wrong number of arguments for 'echo' command\r\n"))
+		conn.Write([]byte("-ERR wrong number of arguments for 'ECHO' command\r\n"))
 		return
 	}
 
@@ -116,4 +121,41 @@ func handleEcho(conn net.Conn, args []token.Item) {
 
 	response := fmt.Sprintf("$%d\r\n%s\r\n", len(*arg.Value), *arg.Value)
 	conn.Write([]byte(response))
+}
+
+func handleSet(conn net.Conn, args []token.Item) {
+	if len(args) != 3 {
+		conn.Write([]byte("-ERR wrong number of arguments for 'SET' command\r\n"))
+	}
+
+	arg, ok := args[1].(*token.BulkString)
+	if !ok || arg.Value == nil {
+		conn.Write([]byte("-ERR SET arguments must be in a bulk string\r\n"))
+		return
+	}
+
+	// Set in the KV databsase
+	// Maybe this should be an try?
+	Kv.Set(args[1].Literal(), args[2].Literal())
+}
+
+func handleGet(conn net.Conn, args []token.Item) {
+	if len(args) != 2 {
+		conn.Write([]byte("-ERR wrong number of arguments for 'GET' command\r\n"))
+	}
+
+	arg, ok := args[1].(*token.BulkString)
+	if !ok || arg.Value == nil {
+		conn.Write([]byte("-ERR GET arguments must be in a bulk string\r\n"))
+		return
+	}
+
+	// Set in the KV databsase
+	value, ok := Kv.Get(args[1].Literal())
+	if !ok {
+		conn.Write([]byte("$-1\r\n"))
+		return
+	}
+
+	conn.Write(fmt.Appendf([]byte{}, "$%d\r\n%s\r\n", len(value), value))
 }
