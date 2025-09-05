@@ -34,7 +34,7 @@ func (s *Store) Get(key string) (string, bool) {
 }
 
 func (s *Store) ExpiryHandler() {
-	time.Sleep(s.Interval)
+	time.Sleep(s.interval)
 	for k, v := range s.kv {
 		if time.Now().After(v.expiry) {
 			delete(s.kv, k)

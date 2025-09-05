@@ -1,12 +1,15 @@
 package main
 
 import (
-	"github.com/codecrafters-io/redis-starter-go/internal/eventloop"
+	"fmt"
+
 	"github.com/codecrafters-io/redis-starter-go/internal/godis"
 )
 
 func main() {
 	app := godis.Server{}
 
-	eventloop.Start()
+	if err := app.Start(); err != nil {
+		fmt.Println("Godis failed to start: %s", err.Error())
+	}
 }
