@@ -36,11 +36,16 @@ func (s *Store) Set(key, value string, duration time.Duration) {
 
 func (s *Store) Get(key string) (string, bool) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	entry, ok := s.kv[key]
-	s.mu.Unlock()
+	if !entry.perm && time.Now().After(entry.expiry) {
+		delete(s.kv, key)
+		return entry.value, ok
+	}
 	return entry.value, ok
 }
 
+// TODO: Improve this from O(n) to O(Log(n)) (using a binary-tree)
 func (s *Store) ExpiryHandler() {
 	for {
 		time.Sleep(s.interval)
