@@ -1,29 +1,48 @@
-package eventloop
+package godis
 
 import (
 	"fmt"
 	"io"
 	"net"
-	"os"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/codecrafters-io/redis-starter-go/internal/kvstore"
+	"github.com/codecrafters-io/redis-starter-go/internal/kv"
 	"github.com/codecrafters-io/redis-starter-go/internal/parser"
 	"github.com/codecrafters-io/redis-starter-go/internal/token"
 )
 
-var Kv = kvstore.NewStore()
+type Server struct {
+	kv     kv.Store
+	config Config
+	// TODO: Maybe add a collection of current connected clients
+	// TODO: Add a logger
+}
 
-// Start begins listening for and handling TCP connections on port 6379.
-func Start() {
-	l, err := net.Listen("tcp", "0.0.0.0:6379")
+type Config struct {
+	host            string
+	port            int
+	cleanerInterval time.Duration
+}
+
+func NewServer(c Config) *Server {
+	return &Server{
+		kv:     *kv.NewStore(c.cleanerInterval),
+		config: c,
+	}
+}
+
+func (s *Server) Start() error {
+	l, err := net.Listen("tcp", s.config.host+":"+strconv.Itoa(s.config.port))
 	if err != nil {
-		fmt.Println("Failed to bind to port 6379:", err)
-		os.Exit(1)
+		return err
 	}
 	defer l.Close()
 
 	fmt.Println("Server is listening on port 6379")
+
+	go s.kv.ExpiryHandler()
 
 	for {
 		// NOTE: Maybe a connection shuuld be more than only that. holding more info?
@@ -32,18 +51,15 @@ func Start() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			continue
 		}
-		go handleConnection(conn)
+		go s.handleConnection(conn)
 	}
 }
 
-func handleConnection(conn net.Conn) {
+func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Create the parser ONCE, outside the loop.
-	// This ensures the same buffer is used for the entire connection.
 	p := parser.NewParser(conn)
 
-	// Loop to continuously read and process commands from the client.
 	for {
 		parsedItem, err := p.Parse()
 		if err != nil {
@@ -74,13 +90,13 @@ func handleConnection(conn net.Conn) {
 
 		switch command {
 		case "PING":
-			handlePing(conn, cmdArray.Items)
+			s.handlePing(conn, cmdArray.Items)
 		case "ECHO":
-			handleEcho(conn, cmdArray.Items)
+			s.handleEcho(conn, cmdArray.Items)
 		case "SET":
-			handleSet(conn, cmdArray.Items)
+			s.handleSet(conn, cmdArray.Items)
 		case "GET":
-			handleGet(conn, cmdArray.Items)
+			s.handleGet(conn, cmdArray.Items)
 		default:
 			errMsg := fmt.Sprintf("-ERR unknown command `%s`\r\n", *commandNameItem.Value)
 			conn.Write([]byte(errMsg))
@@ -88,9 +104,7 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-// TODO: Handle command in separate files maybe?
-// deal with this in a better manner.
-func handlePing(conn net.Conn, args []token.Item) {
+func (Server) handlePing(conn net.Conn, args []token.Item) {
 	if len(args) > 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'ping' command\r\n"))
 		return
@@ -109,7 +123,7 @@ func handlePing(conn net.Conn, args []token.Item) {
 	}
 }
 
-func handleEcho(conn net.Conn, args []token.Item) {
+func (Server) handleEcho(conn net.Conn, args []token.Item) {
 	if len(args) != 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'ECHO' command\r\n"))
 		return
@@ -125,8 +139,9 @@ func handleEcho(conn net.Conn, args []token.Item) {
 	conn.Write([]byte(response))
 }
 
-func handleSet(conn net.Conn, args []token.Item) {
-	if len(args) != 3 {
+func (s *Server) handleSet(conn net.Conn, args []token.Item) (err error) {
+	var duration time.Duration
+	if len(args) > 3 || len(args) < 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'SET' command\r\n"))
 	}
 
@@ -136,13 +151,19 @@ func handleSet(conn net.Conn, args []token.Item) {
 		return
 	}
 
-	// Set in the KV databsase
-	// Maybe this should be an try?
-	Kv.Set(args[1].Literal(), args[2].Literal())
+	if len(args) == 3 {
+		duration, err = time.ParseDuration(args[3].Literal() + "ms")
+		if err != nil {
+			return err
+		}
+	}
+
+	s.kv.Set(args[1].Literal(), args[2].Literal(), duration)
 	conn.Write([]byte("+OK\r\n"))
+	return err
 }
 
-func handleGet(conn net.Conn, args []token.Item) {
+func (s *Server) handleGet(conn net.Conn, args []token.Item) {
 	if len(args) != 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'GET' command\r\n"))
 	}
@@ -154,7 +175,7 @@ func handleGet(conn net.Conn, args []token.Item) {
 	}
 
 	// Set in the KV databsase
-	value, ok := Kv.Get(args[1].Literal())
+	value, ok := s.kv.Get(args[1].Literal())
 	if !ok {
 		conn.Write([]byte("$-1\r\n"))
 		return
