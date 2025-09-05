@@ -141,7 +141,7 @@ func (Server) handleEcho(conn net.Conn, args []token.Item) {
 
 func (s *Server) handleSet(conn net.Conn, args []token.Item) (err error) {
 	var duration time.Duration
-	if len(args) > 3 || len(args) < 2 {
+	if len(args) > 4 || len(args) < 2 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'SET' command\r\n"))
 	}
 
@@ -151,7 +151,7 @@ func (s *Server) handleSet(conn net.Conn, args []token.Item) (err error) {
 		return
 	}
 
-	if len(args) == 3 {
+	if len(args) == 4 {
 		duration, err = time.ParseDuration(args[3].Literal() + "ms")
 		if err != nil {
 			return err
