@@ -21,26 +21,26 @@ type Server struct {
 }
 
 type Config struct {
-	host            string
-	port            int
-	cleanerInterval time.Duration
+	Host            string
+	Port            int
+	CleanerInterval time.Duration
 }
 
 func NewServer(c Config) *Server {
 	return &Server{
-		kv:     *kv.NewStore(c.cleanerInterval),
+		kv:     *kv.NewStore(c.CleanerInterval),
 		config: c,
 	}
 }
 
 func (s *Server) Start() error {
-	l, err := net.Listen("tcp", s.config.host+":"+strconv.Itoa(s.config.port))
+	l, err := net.Listen("tcp", s.config.Host+":"+strconv.Itoa(s.config.Port))
 	if err != nil {
 		return err
 	}
 	defer l.Close()
 
-	fmt.Println("Server is listening on port 6379")
+	fmt.Printf("Server is listening on port %d\n", s.config.Port)
 
 	go s.kv.ExpiryHandler()
 
