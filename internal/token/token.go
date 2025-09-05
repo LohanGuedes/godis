@@ -46,7 +46,7 @@ type BulkString struct {
 func (b *BulkString) Type() RESPType { return BULK_STRING }
 func (b *BulkString) Literal() string {
 	if b.Value == nil {
-		return "null"
+		return ""
 	}
 	return *b.Value
 }

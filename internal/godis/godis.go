@@ -141,12 +141,17 @@ func (Server) handleEcho(conn net.Conn, args []token.Item) {
 
 func (s *Server) handleSet(conn net.Conn, args []token.Item) (err error) {
 	var duration time.Duration
-	if len(args) > 5 || len(args) < 2 {
+	if len(args) > 5 || len(args) < 3 {
 		conn.Write([]byte("-ERR wrong number of arguments for 'SET' command\r\n"))
 	}
 
-	arg, ok := args[1].(*token.BulkString)
-	if !ok || arg.Value == nil {
+	key, ok := args[1].(*token.BulkString)
+	if !ok || key.Literal() == "" {
+		conn.Write([]byte("-ERR SET arguments must be in a bulk string\r\n"))
+		return
+	}
+	val, ok := args[2].(*token.BulkString)
+	if !ok || key.Literal() == "" {
 		conn.Write([]byte("-ERR SET arguments must be in a bulk string\r\n"))
 		return
 	}
@@ -158,7 +163,7 @@ func (s *Server) handleSet(conn net.Conn, args []token.Item) (err error) {
 		}
 	}
 
-	s.kv.Set(args[1].Literal(), args[2].Literal(), duration)
+	s.kv.Set(key.Literal(), val.Literal(), duration)
 	conn.Write([]byte("+OK\r\n"))
 	return err
 }
