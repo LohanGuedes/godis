@@ -47,8 +47,8 @@ func (s *Store) Get(key string) (string, bool) {
 
 // TODO: Improve this from O(n) to O(Log(n)) (using a binary-tree)
 func (s *Store) ExpiryHandler() {
-	for {
-		time.Sleep(s.interval)
+	ticker := time.NewTicker(s.interval)
+	for range ticker.C {
 		s.mu.Lock()
 		for k, v := range s.kv {
 			if !v.perm && time.Now().After(v.expiry) {
