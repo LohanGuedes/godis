@@ -20,7 +20,8 @@ type Store struct {
 
 func NewStore(interval time.Duration) *Store {
 	return &Store{
-		kv: make(map[string]kvEntry),
+		kv:       make(map[string]kvEntry),
+		interval: interval,
 	}
 }
 
